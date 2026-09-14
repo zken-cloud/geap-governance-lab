@@ -1,0 +1,6 @@
+# Repo-wide ruff config so the shared/ module and every agent format the same way.
+line-length = 120
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "I", "W"]
