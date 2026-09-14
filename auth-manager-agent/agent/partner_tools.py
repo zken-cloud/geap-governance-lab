@@ -78,10 +78,28 @@ _tracer = trace.get_tracer("cymbal.partner_access.auth_manager")
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ID = os.environ["GOOGLE_CLOUD_PROJECT"]  # set by Agent Runtime
 AUTH_PROVIDER_LOCATION = os.environ.get("AUTH_PROVIDER_LOCATION", "us-central1")
-# The Cymbal Partner Services URL. deploy.py sets it from --partner-base-url.
-PARTNER_BASE_URL = os.environ["PARTNER_BASE_URL"].rstrip("/")
+
+
+def _setting(name: str) -> str:
+    """Read a deployment setting at call time, not import time.
+
+    deploy.py imports this module on the operator's machine to pickle the agent,
+    where none of these are set; on Agent Runtime, GOOGLE_CLOUD_PROJECT comes from
+    the platform and the rest from deploy.py's --partner-base-url / --continue-uri.
+    """
+    value = os.environ.get(name)
+    if not value:
+        raise RuntimeError(f"{name} is not set on this engine (deploy.py sets it)")
+    return value
+
+
+def _project_id() -> str:
+    return _setting("GOOGLE_CLOUD_PROJECT")
+
+
+def _partner_base_url() -> str:
+    return _setting("PARTNER_BASE_URL").rstrip("/")
 # Where Google's oauthcallback sends the user once they have consented.
 #
 # Not optional in practice: the 3LO providers reject retrieve outright with
@@ -123,7 +141,7 @@ def _agent_token() -> str:
 
 
 def _provider_path(name: str) -> str:
-    return f"projects/{PROJECT_ID}/locations/{AUTH_PROVIDER_LOCATION}/authProviders/{name}"
+    return f"projects/{_project_id()}/locations/{AUTH_PROVIDER_LOCATION}/authProviders/{name}"
 
 
 async def _retrieve(provider: str, user_id: str, scopes: list[str] | None) -> dict[str, Any]:
@@ -147,7 +165,7 @@ async def _retrieve(provider: str, user_id: str, scopes: list[str] | None) -> di
                 headers={
                     "Authorization": f"Bearer {_agent_token()}",
                     "Content-Type": "application/json",
-                    "x-goog-user-project": PROJECT_ID,
+                    "x-goog-user-project": _project_id(),
                 },
             )
 
@@ -249,7 +267,7 @@ async def _partner_request(
         # Which header the credential travelled in — not its value.
         span.set_attribute("partner_api.auth_header", next(iter(headers), ""))
         async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-            response = await client.get(f"{PARTNER_BASE_URL}{path}", params=params or {}, headers=headers)
+            response = await client.get(f"{_partner_base_url()}{path}", params=params or {}, headers=headers)
         span.set_attribute("partner_api.http_status", response.status_code)
         span.set_attribute("partner_api.outcome", "OK" if response.status_code == 200 else "REFUSED")
     try:
@@ -341,7 +359,7 @@ async def _finalize(provider: str, user_id: str, validation_state: str, nonce: s
                 headers={
                     "Authorization": f"Bearer {_agent_token()}",
                     "Content-Type": "application/json",
-                    "x-goog-user-project": PROJECT_ID,
+                    "x-goog-user-project": _project_id(),
                 },
             )
 

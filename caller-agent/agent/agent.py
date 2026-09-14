@@ -22,7 +22,6 @@ import google.oauth2.id_token
 import httpx
 from google.adk.agents import LlmAgent
 
-TARGET_URL = os.environ["TARGET_AGENT_URL"]  # set by deploy.py from --target-agent-url
 MODEL_NAME = os.environ.get("MODEL_NAME", "gemini-3.5-flash")
 
 
@@ -38,11 +37,13 @@ def ask_intake_agent(question: str) -> dict:
     Returns:
         A dict with `status`, and either `answer` or `error`.
     """
-    audience = "{0.scheme}://{0.netloc}".format(urlparse(TARGET_URL))
+    # Read at call time: deploy.py imports this module locally to pickle it.
+    target_url = os.environ["TARGET_AGENT_URL"]  # set by deploy.py from --target-agent-url
+    audience = "{0.scheme}://{0.netloc}".format(urlparse(target_url))
     try:
         token = google.oauth2.id_token.fetch_id_token(google.auth.transport.requests.Request(), audience)
         response = httpx.post(
-            f"{TARGET_URL}/invoke",
+            f"{target_url}/invoke",
             json={"message": question},
             headers={"Authorization": f"Bearer {token}"},
             timeout=120.0,
