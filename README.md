@@ -24,6 +24,33 @@ langgraph-agent/              the DIY agent on plain Cloud Run (no Agent Identit
 shared/                       agent_deploy.py (Agent Runtime deploy) and gemini_enterprise.py
 ```
 
+## Request path
+
+```
+User (Playground / Gemini Enterprise / API)
+        │
+        ▼
+ADK agent on Agent Runtime ── Agent Identity, attached to the gateway (both immutable)
+        │  all egress
+        ▼
+Agent Gateway (AGENT_TO_ANYWHERE, gateway-vpc)
+        ├─ REQUEST_AUTHZ  → IAP: roles/iap.egressor per MCP server / per registry agent
+        ├─ CONTENT_AUTHZ  → Model Armor: request/response templates
+        └─ CONTENT_AUTHZ  → SGP judge over PSC (terraform/10-sgp), fail-closed
+        │  PSC-I into gateway-vpc → <svc>.mcp.<domain> (peered private zone)
+        ▼
+Internal Application LB (codelab's private-networking path: HTTPS, managed cert for *.mcp.<domain>)
+        │  Cloud Run ingress: internal LB only · the agent's own ID token, audience = LB hostname
+        ▼
+MCP servers on Cloud Run:  legacy-dms │ corporate-email │ income-verification
+Partner SaaS (terraform/30-partner-services) and the DIY LangGraph agent sit beside them,
+reached the same way: through the gateway, never directly.
+```
+
+With the codelab's `enable_cloud_run_private_networking = false` the LB hop is absent and
+the agents reach the `*.run.app` URLs through the gateway's private `run.app.` zone; the
+governance layers are identical on both paths.
+
 ## Prerequisites
 
 The codelab finished end to end and still deployed; `gcloud`, `terraform` >= 1.9,
