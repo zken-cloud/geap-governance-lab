@@ -5,14 +5,13 @@ Agent Runtime with Agent Identity, attached to `agent-gateway`. It discovers its
 servers (legacy DMS, income verification, corporate email — Cloud Run services) from the
 Agent Registry at startup.
 
-## Provenance — vendored 2026-08-17
+## Provenance
 
-Vendored from `demos/agent-gateway/src/mortgage-agent/` in
-[GoogleCloudPlatform/cloud-networking-solutions](https://github.com/GoogleCloudPlatform/cloud-networking-solutions),
-where it lived only as an uncommitted working-tree change. **This copy is now the
-source of truth** — edit here, not in the clone.
+Derived from the codelab's agent at `demos/agent-gateway/src/mortgage-agent/` in
+[GoogleCloudPlatform/cloud-networking-solutions](https://github.com/GoogleCloudPlatform/cloud-networking-solutions)
+(Apache 2.0). This copy is maintained independently; edit it here, not in your codelab clone.
 
-It diverges from upstream in two ways:
+It diverges from upstream in three ways:
 
 - **`_handle_sgp_denial`**, the `after_model_callback` in `agent/agent.py` that turns an
   SGP policy denial into a bounded `policy_replan` feedback loop instead of letting it
